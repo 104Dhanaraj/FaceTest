@@ -1,0 +1,29 @@
+# Node / Next.js junk
+face-attendance-system/node_modules/
+face-attendance-system/.next/
+face-attendance-system/.env
+face-attendance-system/.DS_Store
+
+attendance-system/
+FAS/
+
+# Python junk
+face-backend/__pycache__/
+face-backend/.env
+face-backend/models/
+face-backend/venv/
+face-attendance-system/venv/
+face-backend/checkpoints/
+
+# Common junk
+*.zip
+*.tar.gz
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.pt
+*.h5
+*.onnx
+*.pkl
+*.npz

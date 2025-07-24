@@ -238,7 +238,14 @@ def cleanup_blurry_api():
 
 # Recognition endpoint
 @app.post("/recognize")
-async def recognize(file: UploadFile = File(...)):
+async def recognize(
+    file: UploadFile = File(...),
+    session_id: str = Form(None),
+    class_name: str = Form(None),
+    subject: str = Form(None),
+    teacher_id: str = Form(None),
+    mode: str = Form(None),
+):
     print("RECOGNIZE endpoint: called")
     t0 = time.time()
     # Save uploaded file to temp
@@ -275,16 +282,47 @@ async def recognize(file: UploadFile = File(...)):
     pred_usn = knn.predict([test_embedding])[0]
     DISTANCE_THRESHOLD = 0.5  # Facenet512 tuned for real-world classroom use
     print(f"[DEBUG] KNN distance: {dist[0][0]}")
-    # Placeholder: check if this USN is already marked for this session (not implemented)
     already_marked = False  # TODO: implement session attendance check
     if dist[0][0] > DISTANCE_THRESHOLD:
         print(f"[DEBUG] No close match found (distance {dist[0][0]} > {DISTANCE_THRESHOLD})")
-        # Only return a generic message or omit the message field
         return {"status": "no-match", "distance": float(dist[0][0])}
     if already_marked:
         print(f"[DEBUG] Already marked: USN={pred_usn}, distance={dist[0][0]}")
         return {"status": "already-marked", "usn": pred_usn, "distance": float(dist[0][0])}
     print(f"[DEBUG] Match found: USN={pred_usn}, distance={dist[0][0]}")
+    # Insert or update attendance record for this student/session
+    try:
+        print(f"[DEBUG] session_id: {session_id}, class_name: {class_name}, subject: {subject}, teacher_id: {teacher_id}, mode: {mode}")
+        # Look up student UUID from USN
+        student_row = supabase.table("students").select("id").eq("usn", pred_usn).execute().data
+        if student_row and len(student_row) > 0:
+            student_uuid = student_row[0]["id"]
+            print(f"[DEBUG] Found student UUID: {student_uuid} for USN: {pred_usn}")
+            if session_id and class_name and subject and teacher_id and mode:
+                now_iso = time.strftime('%Y-%m-%dT%H:%M:%S')
+                upsert_payload = {
+                    "student_id": student_uuid,
+                    "session_id": session_id,
+                    "class": class_name,
+                    "subject": subject,
+                    "teacher_id": teacher_id,
+                    "date": now_iso.split('T')[0],
+                    "method": "face-auto",
+                    "is_absent": False
+                }
+                if mode == "check-in":
+                    upsert_payload["check_in"] = now_iso
+                elif mode == "check-out":
+                    upsert_payload["check_out"] = now_iso
+                print(f"[DEBUG] Upserting attendance: {upsert_payload}")
+                result = supabase.table("attendance").upsert(upsert_payload, on_conflict="student_id,session_id").execute()
+                print(f"[DEBUG] Upsert result: {result}")
+            else:
+                print(f"[DEBUG] Missing session_id, class_name, subject, teacher_id, or mode. Attendance not upserted.")
+        else:
+            print(f"[DEBUG] No student found for USN: {pred_usn}. Attendance not upserted.")
+    except Exception as e:
+        print(f"[ERROR] Failed to upsert attendance: {e}")
     print(f"Total recognition pipeline time: {time.time() - t0:.2f}s")
     return {"status": "success", "usn": pred_usn, "distance": float(dist[0][0])}
 

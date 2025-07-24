@@ -317,6 +317,14 @@ export default function MobileAttendanceScreen() {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      // Add session_id, class, subject if available
+      if (sessionInfo) {
+        formData.append('session_id', sessionInfo.sessionId);
+        formData.append('class_name', sessionInfo.className);
+        formData.append('subject', sessionInfo.subject);
+        formData.append('teacher_id', sessionInfo.teacherId);
+        formData.append('mode', sessionInfo.sessionMode?.toLowerCase());
+      }
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
       const response = await fetch(`${BACKEND_URL}/recognize`, {
@@ -329,12 +337,12 @@ export default function MobileAttendanceScreen() {
         setRecognitionError('Backend error: ' + response.status);
         setRecognitionStatus('no-match');
         setMatchedStudent(null);
-        setLastDebugInfo({status: 'no-match', distance: null, message: 'Backend error: ' + response.status});
+        setLastDebugInfo({status: 'no-match', distance: null});
         setTimeout(() => setRecognizing(false), 2000);
         return;
       }
       const result = await response.json();
-      setLastDebugInfo({status: result.status, distance: result.distance ?? null, message: result.message});
+      setLastDebugInfo({status: result.status, distance: result.distance ?? null});
       if (result.status === 'success') {
         setRecognitionStatus("matched");
         setMatchedStudent({ name: result.name || "", usn: result.usn, timestamp: new Date().toLocaleTimeString() });
@@ -366,7 +374,7 @@ export default function MobileAttendanceScreen() {
       setRecognitionStatus("no-match");
       setMatchedStudent(null);
       setRecognitionError('Recognition failed: ' + (err instanceof Error ? err.message : String(err)));
-      setLastDebugInfo({status: 'no-match', distance: null, message: 'Recognition failed: ' + (err instanceof Error ? err.message : String(err))});
+      setLastDebugInfo({status: 'no-match', distance: null});
       setTimeout(() => {
       setRecognizing(false);
         setRecognitionStatus('scanning');
