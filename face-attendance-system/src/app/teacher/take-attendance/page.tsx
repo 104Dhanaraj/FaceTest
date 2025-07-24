@@ -219,8 +219,9 @@ const formatTime = useCallback((date: Date) => {
       // Fetch students for the class
       const { data, error: studentError } = await supabase
         .from("students")
-        .select("id, name, usn")
+        .select("id, name, usn, subjects")
         .eq("class", selectedClass)
+        .contains("subjects", [selectedSubject])
 
       if (studentError) {
         console.error("Failed to fetch students:", studentError.message)
@@ -526,9 +527,23 @@ const handleManualCheckIn = useCallback(async (studentId: string) => {
   }, [activeTab, sessionId])
 
   const handleEndAttendance = useCallback(async () => {
-    if (!sessionId) return
-
+    if (!sessionId) return;
     try {
+      // Only update session status if there are no students
+      if (students.length === 0) {
+        await supabase
+          .from("mobile_sessions")
+          .update({ is_active: false })
+          .eq("id", sessionId);
+        showToast("Attendance session ended successfully");
+        setAttendanceStarted(false);
+        setSelectedClass("");
+        setSelectedSubject("");
+        setStudents([]);
+        setActiveTab("checkin");
+        setSessionId(null);
+        return;
+      }
       // Deactivate the session
       await supabase
         .from("mobile_sessions")
@@ -548,21 +563,18 @@ const handleManualCheckIn = useCallback(async (studentId: string) => {
       console.error("Error ending attendance:", error)
       showToast("Failed to end attendance session", "error")
     }
-  }, [sessionId, showToast])
+  }, [sessionId, showToast, students.length]);
 
   const markedStudents = students.filter((s) => s.checkInTime && !s.isAbsent)
   const pendingStudents = students.filter((s) => !s.checkInTime && !s.isAbsent)
   const absentStudents = students.filter((s) => s.isAbsent)
 
   const canEndAttendance = useMemo(() => {
-    if (students.length === 0) return false
-    
-    const activeStudents = students.filter((s) => !s.isAbsent)
-    if (activeStudents.length === 0) return true // All students are absent
-    
-    // All active students must be checked in and out
-    return activeStudents.every((s) => s.checkInTime && s.checkOutTime)
-  }, [students])
+    if (students.length === 0) return true;
+    const activeStudents = students.filter((s) => !s.isAbsent);
+    if (activeStudents.length === 0) return true;
+    return activeStudents.every((s) => s.checkInTime && s.checkOutTime);
+  }, [students]);
 
   // 2. Patch StudentCard to show Undo Check-In button
   const StudentCard = useCallback(({ student, mode }: { student: Student; mode: "checkin" | "checkout" }) => (
@@ -779,6 +791,12 @@ const handleManualCheckIn = useCallback(async (studentId: string) => {
                         End Attendance
                       </Button>
                     </div>
+
+                    {students.length === 0 && (
+                      <div className="text-center text-red-500 font-semibold my-4">
+                        No students in this class/subject.
+                      </div>
+                    )}
 
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                       <TabsList className="grid w-full grid-cols-2 max-w-md">

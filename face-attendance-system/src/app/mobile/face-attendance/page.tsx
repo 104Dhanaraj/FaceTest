@@ -22,6 +22,8 @@ type StudentWithEmbedding = {
   name: string
   usn: string
   embeddings: number[][]
+  class?: string
+  subjects?: string[]
 }
 
 type RecognitionStatus = "scanning" | "matched" | "already-marked" | "no-match" | "no-face"
@@ -95,7 +97,7 @@ export default function MobileAttendanceScreen() {
 
         const { data: studentData, error: studentError } = await supabase
           .from("students")
-          .select("id, name, usn")
+          .select("id, name, usn, class, subjects")
           .eq("class", sessionData.class_name)
 
         if (studentError || !studentData) {
@@ -343,6 +345,17 @@ export default function MobileAttendanceScreen() {
       }
       const result = await response.json();
       setLastDebugInfo({status: result.status, distance: result.distance ?? null});
+      // Only allow marking if the matched student is in filteredStudents
+      if (result.status === 'success' || result.status === 'already-marked') {
+        if (!filteredUsns.has(result.usn)) {
+          setRecognitionStatus("no-match");
+          setMatchedStudent(null);
+          setRecognitionError('Face not recognized for this class/subject');
+          setTimeout(() => setRecognitionStatus("scanning"), 2000);
+          setRecognizing(false);
+          return;
+        }
+      }
       if (result.status === 'success') {
         setRecognitionStatus("matched");
         setMatchedStudent({ name: result.name || "", usn: result.usn, timestamp: new Date().toLocaleTimeString() });
@@ -450,6 +463,7 @@ export default function MobileAttendanceScreen() {
     }, 'image/jpeg', 0.95);
   }, [videoRef, recognizeFace]);
 
+  // Always listen for session changes and set sessionInfo to null if no active session
   useEffect(() => {
     const channel = supabase
       .channel('mobile-sessions-active')
@@ -471,18 +485,13 @@ export default function MobileAttendanceScreen() {
               sessionMode: newSession.mode,
             });
           }
-          if (
-            sessionInfo &&
-            newSession &&
-            newSession.id === sessionInfo.sessionId &&
-            !newSession.is_active
-          ) {
+          if (sessionInfo && newSession && newSession.id === sessionInfo.sessionId && !newSession.is_active) {
             setSessionInfo(null);
           }
         }
       )
       .subscribe();
-
+    // On mount, check for active session
     (async () => {
       const { data: sessionData, error } = await supabase
         .from("mobile_sessions")
@@ -497,9 +506,10 @@ export default function MobileAttendanceScreen() {
           subject: sessionData.subject,
           sessionMode: sessionData.mode,
         });
+      } else {
+        setSessionInfo(null);
       }
     })();
-
     return () => {
       channel.unsubscribe();
     };
@@ -552,7 +562,7 @@ export default function MobileAttendanceScreen() {
     const fetchStudents = async () => {
       const { data: studentData, error: studentError } = await supabase
         .from("students")
-        .select("id, name, usn")
+        .select("id, name, usn, class, subjects")
         .eq("class", sessionInfo.className);
       if (!studentError && studentData) {
         const { data: embeddingData, error: embeddingError } = await supabase
@@ -596,10 +606,57 @@ export default function MobileAttendanceScreen() {
     fetchStudents();
   }, [sessionInfo?.className, sessionInfo?.subject]);
 
-  if (!sessionInfo) {
+  // Helper to get filtered students for the session
+  const filteredStudents = sessionInfo
+    ? students.filter(
+        (s) =>
+          s &&
+          s.usn &&
+          sessionInfo.className &&
+          sessionInfo.subject &&
+          s.class === sessionInfo.className &&
+          Array.isArray(s.subjects)
+            ? s.subjects.includes(sessionInfo.subject)
+            : true
+      )
+    : [];
+
+  // Helper to get filtered USNs for fast lookup
+  const filteredUsns = new Set(filteredStudents.map(s => s.usn));
+
+  // Count logic for check-in/check-out
+  let presentCount = 0;
+  let remainingCount = 0;
+  if (sessionInfo && attendanceRows.length > 0) {
+    if (sessionInfo.sessionMode.toLowerCase() === "check-in") {
+      presentCount = attendanceRows.filter(row => row.check_in && !row.is_absent).length;
+      remainingCount = filteredStudents.length - presentCount;
+    } else {
+      presentCount = attendanceRows.filter(row => row.check_out && !row.is_absent).length;
+      remainingCount = attendanceRows.filter(row => row.check_in && !row.check_out && !row.is_absent).length;
+    }
+  } else {
+    presentCount = 0;
+    remainingCount = filteredStudents.length;
+  }
+
+  useEffect(() => {
+    if (!sessionInfo) {
+      stopCamera();
+    }
+  }, [sessionInfo, stopCamera]);
+
+  if (!sessionInfo || filteredStudents.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600">
-        <p> Loading face recognition session...</p>
+        <div className="text-center">
+          <p>Loading face recognition session...</p>
+          {sessionInfo && filteredStudents.length === 0 && (
+            <div className="mt-4 text-red-600 font-semibold">
+              This session contains 0 students.<br />Face recognition will not activate.
+            </div>
+          )}
+        </div>
       </div>
     )
   }
@@ -650,9 +707,6 @@ export default function MobileAttendanceScreen() {
   }
 
   const statusConfig = getStatusConfig()
-
-  const checkedInCount = attendanceRows.filter(row => row.check_in).length;
-  const checkedOutCount = attendanceRows.filter(row => row.check_out).length;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -795,26 +849,29 @@ export default function MobileAttendanceScreen() {
             {sessionInfo.sessionMode.toLowerCase() === "check-in" ? (
               <>
                 <div>
-                  <div className="text-2xl font-bold text-green-600">{checkedInCount}</div>
+                  <div className="text-2xl font-bold text-green-600">{presentCount}</div>
                   <div className="text-xs text-gray-600">Present</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-gray-400">{Math.max(0, students.length - checkedInCount)}</div>
+                  <div className="text-2xl font-bold text-gray-400">{Math.max(0, remainingCount)}</div>
                   <div className="text-xs text-gray-600">Remaining</div>
                 </div>
               </>
             ) : (
               <>
                 <div>
-                  <div className="text-2xl font-bold text-green-600">{checkedOutCount}</div>
+                  <div className="text-2xl font-bold text-green-600">{presentCount}</div>
                   <div className="text-xs text-gray-600">Checked Out</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-gray-400">{Math.max(0, checkedInCount - checkedOutCount)}</div>
+                  <div className="text-2xl font-bold text-gray-400">{Math.max(0, remainingCount)}</div>
                   <div className="text-xs text-gray-600">To Check Out</div>
                 </div>
               </>
             )}
+          </div>
+          <div className="text-xs text-gray-500 mt-2 text-center">
+            Total students: {filteredStudents.length}
           </div>
           {/* Debug button */}
           <div className="mt-4 pt-4 border-t">
