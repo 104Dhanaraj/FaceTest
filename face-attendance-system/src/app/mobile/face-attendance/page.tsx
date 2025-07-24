@@ -643,6 +643,11 @@ export default function MobileAttendanceScreen() {
   useEffect(() => {
     if (!sessionInfo) {
       stopCamera();
+      setCameraActive(false);
+      setRecognizing(false);
+      setRecognitionStatus('scanning');
+      setMatchedStudent(null);
+      setRecognitionError(null);
     }
   }, [sessionInfo, stopCamera]);
 

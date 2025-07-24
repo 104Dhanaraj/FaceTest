@@ -298,9 +298,9 @@ async def recognize(
             attendance_rows = supabase.table("attendance").select("check_in,check_out").eq("student_id", student_uuid).eq("session_id", session_id).execute().data
             if attendance_rows and len(attendance_rows) > 0:
                 row = attendance_rows[0]
-                if mode == "check-in" and row.get("check_in"):
+                if mode == "check-in" and row.get("check_in") not in (None, "", "null"):
                     already_marked = True
-                if mode == "check-out" and row.get("check_out"):
+                if mode == "check-out" and row.get("check_out") not in (None, "", "null"):
                     already_marked = True
     except Exception as e:
         print(f"[ERROR] Failed to check already-marked: {e}")
