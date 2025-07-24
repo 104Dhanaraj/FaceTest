@@ -1,0 +1,8 @@
+.next/
+node_modules/
+*.zip
+*.tar.gz
+*.png
+*.jpg
+*.jpeg
+*.webm

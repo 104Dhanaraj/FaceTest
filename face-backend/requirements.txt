@@ -1,0 +1,12 @@
+# MIGRATION NOTE: As of [MIGRATION DATE], this backend exclusively uses MobileFaceNet (via DeepFace) for all face embedding and recognition. ArcFace, FaceNet, ssd_mobilenetv1, and face_landmark_68 are deprecated and must not be referenced. KNN (scikit-learn) is the sole classifier. See README for details.
+fastapi
+uvicorn
+deepface
+scikit-learn
+python-dotenv
+supabase
+pillow
+numpy
+python-multipart
+pytest
+httpx
