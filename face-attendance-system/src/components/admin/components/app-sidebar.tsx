@@ -22,7 +22,7 @@ const navigationItems = [
     title: "Dashboard",
     url: "/admin/dashboard",
     icon: LayoutDashboard,
-    isActive: true,
+    isActive: false,
   },
   {
     title: "Student Registration",
@@ -63,7 +63,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <BookOpen className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">EduAdmin</span>
+                  <span className="truncate font-semibold">RVCE</span>
                   <span className="truncate text-xs">Management System</span>
                 </div>
               </Link>

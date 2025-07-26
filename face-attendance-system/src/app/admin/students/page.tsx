@@ -17,7 +17,7 @@ import { AppSidebar } from "@/components/admin/components/app-sidebar"
 import { cn } from "@/lib/utils"
 
 const classOptions = ["MCA-IA", "MCA-IB", "MCA-IIA", "MCA-IIB"]
-const subjectOptions = ["Math", "Physics", "Chemistry", "Computer Science", "English"]
+const subjectOptions = ["Math", "DevOps","Major Project","MAD","IOT","Data-Science I","Data-Science II","DBMS","Computer Networks","Linux","Research Methodology","Minor Project","Techincal Seminar"]
 
 export default function StudentRegistration() {
   type FormDataType = {
@@ -440,13 +440,13 @@ export default function StudentRegistration() {
                   <CardHeader>
                     <CardTitle>Student Images</CardTitle>
                     <CardDescription>
-                      Upload or capture up to 5 clear, close-up face images (minimum 1 required). 
+                      Upload up to 5 clear, close-up face images (minimum 1 required). 
                       Ensure good lighting, face is clearly visible, and avoid blurry images.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Webcam Capture */}
-                    <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 bg-blue-50">
+                    {/* <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 bg-blue-50">
                       <div className="flex flex-col items-center justify-center space-y-2">
                         <Camera className="h-8 w-8 text-blue-500" />
                         <h3 className="font-medium text-blue-700">Webcam Capture</h3>
@@ -479,7 +479,7 @@ export default function StudentRegistration() {
                         <p className="text-xs text-gray-600 mt-1">Face will be auto-cropped and checked for quality</p>
                         <p className="text-xs text-blue-600 mt-1">💡 Tip: Ensure good lighting and face is clearly visible</p>
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Image Previews */}
                     {imagePreviews.length > 0 && (

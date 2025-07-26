@@ -65,9 +65,9 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4 text-center pb-6">
-          <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
+          {/* <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
             <User className="w-8 h-8 text-gray-500" />
-          </div>
+          </div> */}
           <h1 className="text-2xl font-bold text-gray-900">Sign In</h1>
         </CardHeader>
 

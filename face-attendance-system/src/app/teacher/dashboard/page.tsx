@@ -2,10 +2,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import {
   BookOpen,
   ClipboardList,
+  Home,
   FileText,
   Users,
   GraduationCap,
@@ -31,115 +33,135 @@ import {
 } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
 
-// Sample data for students with low attendance
-const lowAttendanceStudents: {
-  id: number
-  name: string
-  attendance: string
-  totalClasses: number
-  attended: number
-  class: string
-  subject: string
-}[] = [
-  {
-    id: 1,
-    name: "Alex Johnson",
-    attendance: "68%",
-    totalClasses: 25,
-    attended: 17,
-    class: "Grade 10A",
-    subject: "Mathematics",
-  },
-  {
-    id: 2,
-    name: "Maria Garcia",
-    attendance: "72%",
-    totalClasses: 25,
-    attended: 18,
-    class: "Grade 9B",
-    subject: "Physics",
-  },
-  {
-    id: 3,
-    name: "David Chen",
-    attendance: "80%",
-    totalClasses: 25,
-    attended: 20,
-    class: "Grade 11C",
-    subject: "Mathematics",
-  },
-  {
-    id: 4,
-    name: "Sarah Williams",
-    attendance: "76%",
-    totalClasses: 25,
-    attended: 19,
-    class: "Grade 10A",
-    subject: "Chemistry",
-  },
-  {
-    id: 5,
-    name: "Michael Brown",
-    attendance: "64%",
-    totalClasses: 25,
-    attended: 16,
-    class: "Grade 9B",
-    subject: "Mathematics",
-  },
-]
 
 export default function TeacherDashboard() {
   const [teacherName, setTeacherName] = useState("")
   const [totalClasses, setTotalClasses] = useState(0)
+  const [lowAttendanceStudents, setLowAttendanceStudents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [showQuickActions, setShowQuickActions] = useState(true)
+const [presentCount, setPresentCount] = useState(0)
+const [totalMarkedToday, setTotalMarkedToday] = useState(0)
+
+  const router = useRouter()
 
   useEffect(() => {
-    const fetchTeacherData = async () => {
+    const fetchDashboardData = async () => {
       const { data: authUser, error: authError } = await supabase.auth.getUser()
       if (authError || !authUser?.user) {
-        console.error("Unable to get authenticated user:", authError?.message)
+        console.error("Auth error:", authError?.message)
         return
       }
 
       const { data: teacherData, error: teacherError } = await supabase
         .from("users")
-        .select("name, classes")
+        .select("name, classes, subjects")
         .eq("id", authUser.user.id)
         .single()
 
-      if (teacherError) {
-        console.error("Failed to fetch teacher data:", teacherError.message)
+      if (teacherError || !teacherData) {
+        console.error("Teacher fetch error:", teacherError?.message)
         return
       }
 
       setTeacherName(teacherData.name)
       setTotalClasses(teacherData.classes?.length || 0)
-      setLoading(false)
-    }
 
-    fetchTeacherData()
-  }, [])
+      const { data: students, error: studentError } = await supabase
+  .from("students")
+  .select("id, name, class, usn")
+  .in("class", teacherData.classes)
+
+if (studentError || !students) {
+  console.error("Student fetch error:", studentError?.message)
+  return
+}
+
+const studentIds = students.map((s) => s.id)
+
+// ⬇️ Fetch today's attendance
+const today = new Date()
+today.setHours(0, 0, 0, 0)
+const todayISO = today.toISOString()
+
+const { data: todayAttendance, error: todayAttendanceError } = await supabase
+  .from("attendance")
+  .select("student_id, is_absent, date")
+  .in("student_id", studentIds)
+  .eq("teacher_id", authUser.user.id)
+  .gte("date", todayISO)
+
+if (todayAttendanceError) {
+  console.error("Today's attendance error:", todayAttendanceError.message)
+  return
+}
+
+const presentToday = todayAttendance.filter((a) => !a.is_absent).length
+const totalToday = todayAttendance.length
+
+setPresentCount(presentToday)
+setTotalMarkedToday(totalToday)
+
+// ⬇️ Fetch all-time attendance
+const { data: attendance, error: attendanceError } = await supabase
+  .from("attendance")
+  .select("student_id, is_absent")
+  .in("student_id", studentIds)
+  .eq("teacher_id", authUser.user.id)
+
+if (attendanceError || !attendance) {
+  console.error("Attendance fetch error:", attendanceError?.message)
+  return
+}
+
+const attendanceMap = new Map()
+
+studentIds.forEach((id) => {
+  const records = attendance.filter((a) => a.student_id === id)
+  const total = records.length
+  const present = records.filter((r) => !r.is_absent).length
+  const percent = total > 0 ? Math.round((present / total) * 100) : 0
+
+  if (percent < 85) {
+    attendanceMap.set(id, { total, attended: present, percent })
+  }
+})
+
+const lowAttendance = students
+  .filter((s) => attendanceMap.has(s.id))
+  .map((s) => ({
+    id: s.id,
+    name: s.name,
+    usn: s.usn,
+    class: s.class,
+    subject: "—", // Optional
+    totalClasses: attendanceMap.get(s.id)?.total || 0,
+    attended: attendanceMap.get(s.id)?.attended || 0,
+    attendance: `${attendanceMap.get(s.id)?.percent || 0}%`,
+  }))
+
+setLowAttendanceStudents(lowAttendance)
+    }
+  fetchDashboardData() // ← move this inside useEffect
+}, [])
 
   const navigationItems = [
-    { title: "Dashboard", icon: BookOpen, url: "#", isActive: true },
+    { title: "Dashboard", icon: Home, url: "#", isActive: true },
     { title: "Take Attendance", icon: Users, url: "/teacher/take-attendance", isActive: false },
-    { title: "Manual Attendance", icon: ClipboardList, url: "#", isActive: false },
-    { title: "Reports", icon: FileText, url: "#", isActive: false },
   ]
+
   return (
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
-              <GraduationCap className="h-6 w-6" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">EduAttend</h2>
-              <p className="text-sm text-slate-600">Face Recognition System</p>
-            </div>
+          <div className="flex items-center gap-2 px-4 py-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>
+          <div className="flex flex-col">
+            <span className="text-lg font-semibold">RVCE</span>
+            <span className="text-xs text-muted-foreground">Teacher Portal</span>
+          </div>
+        </div>
         </SidebarHeader>
 
         <SidebarContent>
@@ -244,8 +266,14 @@ export default function TeacherDashboard() {
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex items-baseline gap-2">
-                    <div className="text-4xl font-bold text-blue-600">76</div>
-                    <div className="text-lg text-slate-600">out of 89</div>
+                    <div className="text-4xl font-bold text-blue-600">{presentCount}</div>
+<div className="text-lg text-slate-600">out of {totalMarkedToday}</div>
+<p className="text-sm text-slate-600">
+  {totalMarkedToday > 0
+    ? `${Math.round((presentCount / totalMarkedToday) * 100)}% attendance rate today`
+    : "No attendance recorded yet today"}
+</p>
+
                   </div>
                   <p className="text-sm text-slate-600">85% attendance rate today</p>
                   <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
@@ -317,38 +345,6 @@ export default function TeacherDashboard() {
             </div>
           </div>
 
-          {/* Quick Actions Section */}
-          {showQuickActions && (
-            <div className="mt-8 p-6 bg-white rounded-lg shadow-md border-l-4 border-blue-500 relative">
-              <button
-                onClick={() => setShowQuickActions(false)}
-                className="absolute top-4 right-4 h-8 w-8 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors"
-                aria-label="Close quick actions"
-              >
-                <X className="h-4 w-4 text-slate-500" />
-              </button>
-              <div className="flex items-start gap-4 pr-8">
-                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900 mb-2">Quick Actions</h3>
-                  <p className="text-slate-600 mb-4">
-                    Ready to take attendance for your next class? Use the face recognition system for quick and accurate
-                    attendance marking.
-                  </p>
-                  <div className="flex gap-3">
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                      Take Attendance
-                    </button>
-                    <button className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium">
-                      View Reports
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </main>
       </SidebarInset>
     </SidebarProvider>

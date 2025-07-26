@@ -45,7 +45,7 @@ type Student = {
 }
 
 const classOptions = ["MCA-IA","MCA-IB", "MCA-IIA", "MCA-IIB"]
-const subjectOptions = ["Math", "Physics", "Chemistry", "Computer Science", "English"]
+const subjectOptions = ["Math", "DevOps","Major Project","MAD","IOT","Data-Science I","Data-Science II","DBMS","Computer Networks","Linux","Research Methodology","Minor Project","Techincal Seminar"]
 
 export default function StudentManagement() {
   const [selectedClass, setSelectedClass] = useState("")

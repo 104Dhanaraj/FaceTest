@@ -53,10 +53,10 @@ interface Student {
 }
 
 const navigationItems = [
-  { title: "Dashboard", icon: Home, url: "#", isActive: false },
+  { title: "Dashboard", icon: Home, url: "/teacher/dashboard", isActive: false },
   { title: "Take Attendance", icon: Users, url: "#", isActive: true },
-  { title: "Attendance History", icon: Calendar, url: "#", isActive: false },
-  { title: "Reports", icon: BarChart3, url: "#", isActive: false },
+  // { title: "Attendance History", icon: Calendar, url: "#", isActive: false },
+  // { title: "Reports", icon: BarChart3, url: "#", isActive: false },
 ]
 
 function AppSidebar() {
@@ -68,14 +68,14 @@ function AppSidebar() {
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-semibold">EduAttend</span>
+            <span className="text-lg font-semibold">RVCE</span>
             <span className="text-xs text-muted-foreground">Teacher Portal</span>
           </div>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (

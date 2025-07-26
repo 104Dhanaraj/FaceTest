@@ -1,48 +1,36 @@
+//face-attendance-system/src/admin/components/attendance-table.tsx
 "use client"
-
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase"
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table"
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle,
+} from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-const attendanceData = [
-  {
-    studentName: "Alice Johnson",
-    usn: "1MS21CS001",
-    class: "CSE-A",
-    attendance: 78,
-  },
-  {
-    studentName: "Bob Smith",
-    usn: "1MS21CS002",
-    class: "CSE-A",
-    attendance: 82,
-  },
-  {
-    studentName: "Carol Davis",
-    usn: "1MS21EC015",
-    class: "ECE-B",
-    attendance: 75,
-  },
-  {
-    studentName: "David Wilson",
-    usn: "1MS21ME032",
-    class: "ME-C",
-    attendance: 80,
-  },
-  {
-    studentName: "Eva Brown",
-    usn: "1MS21CS045",
-    class: "CSE-B",
-    attendance: 72,
-  },
-]
-
 export function AttendanceTable() {
+  const [students, setStudents] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data, error } = await supabase.rpc("get_low_attendance_students", { threshold: 85 })
+      if (error) {
+        console.error("Fetch error:", error)
+      } else {
+        setStudents(data)
+      }
+    }
+
+    fetchData()
+  }, [])
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Low Attendance Warnings</CardTitle>
-        <CardDescription>Students with attendance below 85% threshold</CardDescription>
+        <CardDescription>Students with attendance below 85%</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -55,13 +43,13 @@ export function AttendanceTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {attendanceData.map((student) => (
-              <TableRow key={student.usn} className={student.attendance < 85 ? "bg-red-50 hover:bg-red-100" : ""}>
-                <TableCell className="font-medium">{student.studentName}</TableCell>
+            {students.map((student) => (
+              <TableRow key={student.usn}>
+                <TableCell className="font-medium">{student.name}</TableCell>
                 <TableCell>{student.usn}</TableCell>
                 <TableCell>{student.class}</TableCell>
                 <TableCell>
-                  <Badge variant={student.attendance < 85 ? "destructive" : "secondary"}>{student.attendance}%</Badge>
+                  <Badge variant="destructive">{student.attendance_percent.toFixed(1)}%</Badge>
                 </TableCell>
               </TableRow>
             ))}
@@ -71,4 +59,3 @@ export function AttendanceTable() {
     </Card>
   )
 }
- 

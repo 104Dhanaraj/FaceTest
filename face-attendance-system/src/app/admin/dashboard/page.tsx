@@ -1,3 +1,4 @@
+//face-attendance-system/src/app/admin/dashboard/page.tsx
 "use client"
 
 import AdminDashboard from "@/components/admin/components/admin-dashboard"

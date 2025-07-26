@@ -1,3 +1,4 @@
+//face-attendance-system/src/admin/components/admin-dashboard.tsx
 "use client"
 
 import { AppSidebar } from "./app-sidebar"
@@ -15,10 +16,10 @@ export default function AdminDashboard() {
         <div className="flex-1 space-y-4 p-8 pt-6">
           <div className="flex items-center justify-between space-y-2">
             <Breadcrumb>
-              <BreadcrumbList>
+              {/* <BreadcrumbList>
                 <BreadcrumbItem>Admin</BreadcrumbItem>
                 <BreadcrumbPage>Dashboard</BreadcrumbPage>
-              </BreadcrumbList>
+              </BreadcrumbList> */}
             </Breadcrumb>
           </div>
           <Separator />

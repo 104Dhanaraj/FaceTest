@@ -1,31 +1,69 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { GraduationCap, Users, BookOpen } from "lucide-react"
-
-const stats = [
-  {
-    title: "Total Students",
-    value: "1,247",
-    icon: GraduationCap,
-    change: "+12% from last month",
-    changeType: "positive" as const,
-  },
-  {
-    title: "Total Teachers",
-    value: "89",
-    icon: Users,
-    change: "+3% from last month",
-    changeType: "positive" as const,
-  },
-  {
-    title: "Total Courses",
-    value: "156",
-    icon: BookOpen,
-    change: "+8% from last month",
-    changeType: "positive" as const,
-  },
-]
+import { supabase } from "@/lib/supabase"
 
 export function StatsCards() {
+  const [studentsCount, setStudentsCount] = useState<number | null>(null)
+  const [teachersCount, setTeachersCount] = useState<number | null>(null)
+  const [coursesCount, setCoursesCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const { count: studentCount } = await supabase
+        .from("students")
+        .select("*", { count: "exact", head: true })
+
+      const { count: teacherCount } = await supabase
+        .from("users")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "teacher")
+
+      const { data: teachers } = await supabase
+        .from("users")
+        .select("subjects")
+        .eq("role", "teacher")
+
+      const allSubjects = teachers?.flatMap((t) => {
+        if (typeof t.subjects === "string") {
+          return t.subjects.split(",").map((s) => s.trim())
+        } else if (Array.isArray(t.subjects)) {
+          return t.subjects
+        } else {
+          return []
+        }
+      }) ?? []
+
+      const uniqueSubjects = new Set(allSubjects)
+
+      setStudentsCount(studentCount ?? 0)
+      setTeachersCount(teacherCount ?? 0)
+      setCoursesCount(uniqueSubjects.size)
+    }
+
+    fetchStats()
+  }, [])
+
+  const stats = [
+    {
+      title: "Total Students",
+      value: studentsCount ?? "...",
+      icon: GraduationCap,
+    },
+    {
+      title: "Total Teachers",
+      value: teachersCount ?? "...",
+      icon: Users,
+    },
+    {
+      title: "Total Courses assigned",
+      value: coursesCount ?? "...",
+      icon: BookOpen,
+    },
+  ]
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {stats.map((stat) => (
@@ -36,7 +74,6 @@ export function StatsCards() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stat.value}</div>
-            <p className="text-xs text-muted-foreground">{stat.change}</p>
           </CardContent>
         </Card>
       ))}
